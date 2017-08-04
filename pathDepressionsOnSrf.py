@@ -15,24 +15,17 @@ def bellCrv(val,sd):
     y = coefficent*m.pow(m.e,power)
     return y
 
-def depressCrvs(crvs,paths,startPt,radius,sd):
+def depressCrvs(srf,crvs,paths,startPt,radius,sd):
     newCrvs = []
     for i in range(len(crvs)):
-        divPts = rs.DivideCurve(crvs[i],100)
-        if i<len(crvs)-1:
-            cntPt01 = centerCrv(crvs[i])
-            cntPt02 = centerCrv(crvs[i+1])
-            horVec = rs.VectorCreate(cntPt01,cntPt02)
+        divPts = rs.DivideCurve(crvs[i],400)
         for j in range(len(divPts)):
             path = rs.PointClosestObject(divPts[j],paths)[0]
             param = rs.CurveClosestPoint(path,divPts[j])
             close = rs.EvaluateCurve(path,param)
+            srfParam = rs.SurfaceClosestPoint(srf,close)
+            vec = rs.SurfaceNormal(srf,srfParam)
             dist = rs.Distance(close,divPts[j])
-            tan = rs.CurveTangent(crvs[i],param)
-            vec = [0,0,-1] #rs.VectorCrossProduct(horVec,tan)
-            testVec = rs.VectorCreate(cntPt01,divPts[j])
-            if rs.VectorDotProduct(vec,testVec)<0:
-                rs.VectorReverse(vec)
             vec = rs.VectorUnitize(vec)
             border = 1
             entry = 1
@@ -42,9 +35,13 @@ def depressCrvs(crvs,paths,startPt,radius,sd):
                 border = rs.Distance(rs.CurveStartPoint(crvs[i]),divPts[j])
             if border<sd*3:
                 border = border/(sd*3)
+            else:
+                border = 1
             entryDist = rs.Distance(startPt,divPts[j])
             if entryDist<sd*10:
                 entry = entryDist/(sd*10)
+            else:
+                entry = 1
             if dist<sd*2:
                 val = radius*(bellCrv(dist,sd))
                 divPts[j] = rs.PointAdd(divPts[j],vec*val*border*entry)
@@ -52,12 +49,13 @@ def depressCrvs(crvs,paths,startPt,radius,sd):
     return divPts
 
 def Main():
-    crvs= rs.GetObjects("please select curves",rs.filter.curve)
+    crvs= rs.GetObjects("please select srf curves",rs.filter.curve)
     paths= rs.GetObjects("please select depression paths",rs.filter.curve)
     startPt = rs.GetObject("please select entry point",rs.filter.point)
-    radius = rs.GetReal("please enter path radius",.1)
-    power = rs.GetReal("please enter standard dev",.5)
-    crvs = depressCrvs(crvs,paths,startPt,radius,power)
+    radius = rs.GetReal("please enter path radius",2)
+    sd = rs.GetReal("please enter standard dev",.25)
+    srf = rs.GetObject("please enter surface", rs.filter.surface)
+    crvs = depressCrvs(srf,crvs,paths,startPt,radius,sd)
     return crvs
 
 Main()
